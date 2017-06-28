@@ -4,10 +4,10 @@ import (
 	"strings"
 
 	"github.com/godbus/dbus"
-	"github.com/muka/go-bluetooth/bluez"
-	"github.com/muka/go-bluetooth/bluez/profile"
-	"github.com/muka/go-bluetooth/emitter"
-	"github.com/muka/go-bluetooth/util"
+	"github.com/saurabh-newera/BLE/bluez"
+	"github.com/saurabh-newera/BLE/bluez/profile"
+	"github.com/saurabh-newera/BLE/emitter"
+	"github.com/saurabh-newera/BLE/util"
 	"github.com/tj/go-debug"
 )
 

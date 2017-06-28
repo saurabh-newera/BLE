@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/muka/go-bluetooth/linux"
+	"github.com/saurabh-newera/BLE/linux"
 	"github.com/tj/go-debug"
 )
 

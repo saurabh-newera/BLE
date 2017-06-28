@@ -7,9 +7,9 @@ import (
 	"github.com/op/go-logging"
 	"github.com/tj/go-debug"
 
-	"github.com/muka/go-bluetooth/bluez"
-	"github.com/muka/go-bluetooth/bluez/profile"
-	"github.com/muka/go-bluetooth/emitter"
+	"github.com/saurabh-newera/BLE/bluez"
+	"github.com/saurabh-newera/BLE/bluez/profile"
+	"github.com/saurabh-newera/BLE/emitter"
 )
 
 var logger = logging.MustGetLogger("api")

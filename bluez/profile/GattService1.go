@@ -2,7 +2,7 @@ package profile
 
 import (
 	"github.com/godbus/dbus"
-	"github.com/muka/go-bluetooth/bluez"
+	"github.com/saurabh-newera/BLE/bluez"
 )
 
 // NewGattService1 create a new GattService1 client
