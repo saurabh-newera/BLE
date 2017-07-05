@@ -67,6 +67,15 @@ var sensorTagUUIDs = map[string]string{
 	"LUXOMETER_CONFIG_UUID":  "aa72",
 	"LUXOMETER_DATA_UUID":    "aa71",
 	"LUXOMETER_PERIOD_UUID":  "aa73",
+	
+	"DEVICE_INFORMATION_UUID":			"180A",
+	"SYSTEM_ID_UUID":					"2A23",
+	"MODEL_NUMBER_UUID":				"2A24",
+	"SERIAL_NUMBER_UUID":				"2A25",
+	"FIRMWARE_REVISION_UUID":			"2A26",
+	"HARDWARE_REVISION_UUID":			"2A27",
+	"SOFTWARE_REVISION_UUID":			"2A28",
+	"MANUFACTURER_NAME_UUID":			"2A29",
 }
 
 //Period =[Input*10]ms,(lowerlimit 300 ms, max 2500ms),default 1000 ms
@@ -83,7 +92,12 @@ func getUUID(name string) string {
 	return "F000" + sensorTagUUIDs[name] + "-0451-4000-B000-000000000000"
 }
 
-
+func getDeviceInfoUUID(name string) string {
+	if sensorTagUUIDs[name] == "" {
+		panic("Not found " + name)
+	}
+	return "0000" + sensorTagUUIDs[name] + "-0000-1000-8000-00805F9B34FB"
+}
 
 //....getting config,data,period characteristics for Humidity sensor...........................
 
@@ -1832,6 +1846,14 @@ func NewSensorTag(d *api.Device) (*SensorTag, error) {
 	}
 	s.Luxometer= luxometer
 	
+	//initiating things for reading device info of  sensorTag...(getting firmware,hardware,manufacturer,model char...).....
+	
+	devInformation, err := newDeviceInfo(s)
+	if err != nil {
+		return nil, err
+	}
+	s.DeviceInfo= devInformation
+	
 	return s, nil
 	
 }
@@ -1844,6 +1866,7 @@ type SensorTag struct {
 	Mpu			 	MpuSensor
 	Barometric		BarometricSensor
 	Luxometer		LuxometerSensor
+	DeviceInfo		SensorTagDeviceInfo
 }
 
 //Sensor generic sensor interface
@@ -1852,4 +1875,102 @@ type Sensor interface {
 	IsEnabled() (bool, error)
 	Enable() error
 	Disable() error
+}
+
+func newDeviceInfo(tag *SensorTag) (SensorTagDeviceInfo, error) {
+
+	dev := tag.Device
+	
+	DeviceFirmwareUUID := getDeviceInfoUUID("FIRMWARE_REVISION_UUID")
+	DeviceHardwareUUID := getDeviceInfoUUID("HARDWARE_REVISION_UUID")
+	DeviceManufacturerUUID := getDeviceInfoUUID("MANUFACTURER_NAME_UUID")
+	DeviceModelUUID := getDeviceInfoUUID("MODEL_NUMBER_UUID")
+	
+	var loadChars func() (SensorTagDeviceInfo, error)
+
+	loadChars = func() (SensorTagDeviceInfo, error) {
+
+		dbgTag("Load device DeviceFirmwareUUID")
+		
+		firmwareInfo, err := dev.GetCharByUUID(DeviceFirmwareUUID)
+		if err != nil {
+			return SensorTagDeviceInfo{}, err
+		}
+		if firmwareInfo == nil {
+			return SensorTagDeviceInfo{}, errors.New("Cannot find DeviceFirmwareUUID characteristic " + DeviceFirmwareUUID)
+		}
+		
+		dbgTag("Load device DeviceHardwareUUID")
+		
+		hardwareInfo, err := dev.GetCharByUUID(DeviceHardwareUUID)
+		if err != nil {
+			return SensorTagDeviceInfo{}, err
+		}
+		if hardwareInfo == nil {
+			return SensorTagDeviceInfo{}, errors.New("Cannot find DeviceHardwareUUID characteristic " + DeviceHardwareUUID)
+		}
+		
+		dbgTag("Load device DeviceManufacturerUUID")
+		
+		manufacturerInfo, err := dev.GetCharByUUID(DeviceManufacturerUUID)
+		if err != nil {
+			return SensorTagDeviceInfo{}, err
+		}
+		if manufacturerInfo == nil {
+			return SensorTagDeviceInfo{}, errors.New("Cannot find DeviceManufacturerUUID characteristic " + DeviceManufacturerUUID)
+		}		
+		
+		dbgTag("Load device DeviceModelUUID")
+		
+		modelInfo, err := dev.GetCharByUUID(DeviceModelUUID)
+		if err != nil {
+			return SensorTagDeviceInfo{}, err
+		}
+		if modelInfo == nil {
+			return SensorTagDeviceInfo{}, errors.New("Cannot find DeviceModelUUID characteristic " + DeviceModelUUID)
+		}
+		
+		return SensorTagDeviceInfo{tag, modelInfo, manufacturerInfo, hardwareInfo,firmwareInfo}, err
+	}
+
+	return loadChars()
+}
+
+//......DeviceInfo sensorTag structure....
+
+type SensorTagDeviceInfo struct {
+	tag					*SensorTag
+	firmwareInfo		*profile.GattCharacteristic1
+	hardwareInfo		*profile.GattCharacteristic1
+	manufacturerInfo	*profile.GattCharacteristic1
+	modelInfo			*profile.GattCharacteristic1
+}
+
+//........Read device info from sensorTag........................
+
+func (s *SensorTagDeviceInfo) Read() (api.DataEvent, error) {
+
+	options1 := make(map[string]dbus.Variant)
+	fw, err := s.firmwareInfo.ReadValue(options1)
+	
+	options2 := make(map[string]dbus.Variant)
+	hw, err := s.hardwareInfo.ReadValue(options2)
+	
+	options3 := make(map[string]dbus.Variant)
+	manufacturer, err := s.manufacturerInfo.ReadValue(options3)
+	
+	options4 := make(map[string]dbus.Variant)
+	model, err := s.modelInfo.ReadValue(options4)
+	
+	//log.Debug(" system info for sensorTag: ",string(fw),string(hw),string(manufacturer),string(model),)
+	
+	dataEvent := api.DataEvent{
+				
+		FirmwareVersion:	string(fw),
+		HardwareVersion:	string(hw),
+		Manufacturer:		string(manufacturer),
+		Model:				string(model),
+					
+	}	
+	return dataEvent, err
 }

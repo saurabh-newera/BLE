@@ -91,10 +91,10 @@ type DataEvent struct {
 	
 	HumidityValue				interface{}
 	HumidityUnit				string
-	
+
 	HumidityTempValue			interface{}
 	HumidityTempUnit			string
-	
+
 	MpuGyroscopeValue			interface{}
 	MpuGyroscopeUnit			string
 	
@@ -106,4 +106,9 @@ type DataEvent struct {
 	
 	LuxometerValue 				interface{}
 	LuxometerUnit				string
+	
+	FirmwareVersion				string
+	HardwareVersion				string
+	Manufacturer				string
+	Model						string
 }
