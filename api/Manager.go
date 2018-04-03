@@ -8,6 +8,7 @@ import (
 	"github.com/saurabh-newera/BLE/bluez/profile"
 	"github.com/saurabh-newera/BLE/emitter"
 	"github.com/saurabh-newera/BLE/util"
+	"fmt"
 )
 
 var manager *Manager
@@ -109,7 +110,7 @@ func (m *Manager) watchChanges() error {
 
 					fmt.Sprintf("Removed %s %s", v.Name, v.Path)
 
-					// dbg("\n+++Body %s\n", v.Body)
+					// fmt.Sprintf("\n+++Body %s\n", v.Body)
 					path := v.Body[0].(dbus.ObjectPath)
 					ifaces := v.Body[1].([]string)
 
@@ -121,14 +122,14 @@ func (m *Manager) watchChanges() error {
 					for _, iF := range ifaces {
 						// device removed
 						if iF == bluez.Device1Interface {
-							// dbg("%s : %s", path, ifaces)
+							// fmt.Sprintf("%s : %s", path, ifaces)
 							fmt.Sprintf("Removed device %s", path)
 							devInfo := DiscoveredDeviceEvent{string(path), DeviceRemoved, nil}
 							emitter.Emit("discovery", devInfo)
 						}
 						//adapter removed
 						if iF == bluez.Adapter1Interface {
-							// dbg("%s : %s", path, ifaces)
+							// fmt.Sprintf("%s : %s", path, ifaces)
 							strpath := string(path)
 							parts := strings.Split(strpath, "/")
 							name := parts[len(parts)-1:][0]
@@ -231,7 +232,7 @@ func (m *Manager) LoadObjects() error {
 		return err
 	}
 	m.objects = objs
-	dbg("Loaded %d objects", len(m.objects))
+	fmt.Sprintf("Loaded %d objects", len(m.objects))
 	return nil
 }
 

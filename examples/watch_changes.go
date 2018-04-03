@@ -3,6 +3,7 @@ package examples
 import (
 	"strings"
 	"time"
+	"fmt"
 
 	"github.com/muka/go-bluetooth/api"
 	"github.com/muka/go-bluetooth/emitter"
@@ -113,7 +114,7 @@ func discoverDevices(adapterID string) {
 		dev := discoveryEvent.Device
 
 		if dev == nil {
-			dbg("Device removed!")
+			fmt.Sprintf("Device removed!")
 			return
 		}
 
@@ -134,7 +135,7 @@ func loadDevices() bool {
 		panic(err)
 	}
 
-	dbg("Loaded devices %d", len(devices))
+	fmt.Sprintf("Loaded devices %d", len(devices))
 
 	for _, dev := range devices {
 		if filterDevice(&dev) {
@@ -168,7 +169,7 @@ func listProfiles(dev *api.Device) {
 		charProps := charEvent.Properties
 
 		substr := strings.ToUpper(charProps.UUID[4:8])
-		dbg("Check for char %s", substr)
+		fmt.Sprintf("Check for char %s", substr)
 		serviceName := sensorTagUUIDs[substr]
 
 		if serviceName != "" {
