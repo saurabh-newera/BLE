@@ -2,6 +2,7 @@ package bluez
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/godbus/dbus"
 )
