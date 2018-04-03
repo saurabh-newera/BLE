@@ -5,10 +5,7 @@ import (
 	"strconv"
 
 	"github.com/saurabh-newera/BLE/linux"
-	"github.com/tj/go-debug"
 )
-
-var dbgSwitch = debug.Debug("bluez:switch")
 
 var rfclass = [...]string{
 	"bluetooth",
@@ -25,7 +22,7 @@ func GetHCIConfig(adapterID string) *linux.HCIConfig {
 // GetAdapterStatus return the status of an adapter
 func GetAdapterStatus(adapterID string) (*linux.RFKillResult, error) {
 
-	dbgSwitch("Get adapter %s", adapterID)
+	fmt.Sprintf("Get adapter %s", adapterID)
 
 	if !rfkill.IsInstalled() {
 		return nil, errors.New("rfkill is not available")
@@ -37,9 +34,9 @@ func GetAdapterStatus(adapterID string) (*linux.RFKillResult, error) {
 	}
 
 	for _, adapter := range list {
-		dbgSwitch("adapter %v", adapter)
+		fmt.Sprintf("adapter %v", adapter)
 		if adapter.Description == adapterID {
-			dbgSwitch("Got adapter index %d desc: %s type: %s hard-block: %t soft-block: %t",
+			fmt.Sprintf("Got adapter index %d desc: %s type: %s hard-block: %t soft-block: %t",
 				adapter.Index,
 				adapter.Description,
 				adapter.IdentifierType,
@@ -57,7 +54,7 @@ func GetAdapterStatus(adapterID string) (*linux.RFKillResult, error) {
 // ToggleAdapter Swap Off/On a device
 func ToggleAdapter(adapterID string) error {
 
-	dbgSwitch("Toggle adapter")
+	fmt.Sprintf("Toggle adapter")
 
 	var identifier string
 	if isRFClass(adapterID) {
@@ -81,7 +78,7 @@ func ToggleAdapter(adapterID string) error {
 // TurnOnAdapter Enable a rfkill managed device
 func TurnOnAdapter(adapterID string) error {
 
-	dbgSwitch("Turn ON adapter %s", adapterID)
+	fmt.Sprintf("Turn ON adapter %s", adapterID)
 
 	var identifier string
 	if isRFClass(adapterID) {
@@ -109,7 +106,7 @@ func TurnOnAdapter(adapterID string) error {
 // TurnOffAdapter Enable a rfkill managed device
 func TurnOffAdapter(adapterID string) error {
 
-	dbgSwitch("Turn OFF adapter %s", adapterID)
+	fmt.Sprintf("Turn OFF adapter %s", adapterID)
 
 	var identifier string
 	if isRFClass(adapterID) {
@@ -142,19 +139,19 @@ func isRFClass(id string) bool {
 
 // TurnOnBluetooth turn on bluetooth support
 func TurnOnBluetooth() error {
-	dbgSwitch("Turn ON bluetooth")
+	fmt.Sprintf("Turn ON bluetooth")
 	return TurnOnAdapter("bluetooth")
 }
 
 // TurnOffBluetooth turn on bluetooth support
 func TurnOffBluetooth() error {
-	dbgSwitch("Turn OFF bluetooth")
+	fmt.Sprintf("Turn OFF bluetooth")
 	return TurnOffAdapter("bluetooth")
 }
 
 // ToggleBluetooth toggle off/on the bluetooth support
 func ToggleBluetooth() error {
-	dbgSwitch("Toggle bluetooth")
+	fmt.Sprintf("Toggle bluetooth")
 	err := TurnOffBluetooth()
 	if err != nil {
 		return err

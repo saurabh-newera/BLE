@@ -1,11 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"github.com/godbus/dbus"
-	"github.com/tj/go-debug"
 )
-
-var dbg = debug.Debug("dbus:test")
 
 // read sensor tag temperature
 func testrun() {
@@ -27,34 +25,34 @@ func testrun() {
 
 	opts := make(map[string]dbus.Variant)
 
-	dbg("Enable measurment")
+	fmt.Sprintf("Enable measurment")
 
 	b := []byte{0x01}
 
 	temperatureConfig := conn.Object(ns, dbus.ObjectPath(temperatureConfigPath))
 	call := temperatureConfig.Call(writeCall, 0, b, opts)
 	if call.Err != nil {
-		dbg("Error: %s", call.Err)
+		fmt.Sprintf("Error: %s", call.Err)
 		panic(call.Err)
 	}
 
 	// read
-	dbg("Read data")
+	fmt.Sprintf("Read data")
 	temperatureData := conn.Object(ns, dbus.ObjectPath(temperatureDataPath))
 	call = temperatureData.Call(readCall, 0, opts)
 	if call.Err != nil {
-		dbg("Error: %s", call.Err)
+		fmt.Sprintf("Error: %s", call.Err)
 		panic(call.Err)
 	}
 
-	dbg("Result %v", call.Body)
+	fmt.Sprintf("Result %v", call.Body)
 
-	dbg("Disable measurment")
+	fmt.Sprintf("Disable measurment")
 
 	b = []byte{0x00}
 	call = temperatureConfig.Call(writeCall, 0, b, opts)
 	if call.Err != nil {
-		dbg("Error: %s", call.Err)
+		fmt.Sprintf("Error: %s", call.Err)
 		panic(call.Err)
 	}
 

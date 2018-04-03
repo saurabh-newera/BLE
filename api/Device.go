@@ -5,24 +5,23 @@ import (
 	"reflect"
 	"strings"
 
+	"fmt"
 	"github.com/godbus/dbus"
+	logging "github.com/op/go-logging"
 	"github.com/saurabh-newera/BLE/bluez"
 	"github.com/saurabh-newera/BLE/bluez/profile"
 	"github.com/saurabh-newera/BLE/emitter"
 	"github.com/saurabh-newera/BLE/util"
-	"github.com/tj/go-debug"
-	logging "github.com/op/go-logging"
-	"fmt"
 )
+
 var log = logging.MustGetLogger("examples")
-var dbgDevice = debug.Debug("bluez:api:Device")
 var deviceRegistry = make(map[string]*Device)
 
 // NewDevice creates a new Device
 func NewDevice(path string) *Device {
 
 	if _, ok := deviceRegistry[path]; ok {
-		// dbgDevice("Reusing cache instance %s", path)
+		// fmt.Sprintf("Reusing cache instance %s", path)
 		return deviceRegistry[path]
 	}
 
@@ -77,7 +76,7 @@ func ParseDevice(path dbus.ObjectPath, propsMap map[string]dbus.Variant) (*Devic
 
 func (d *Device) watchProperties() error {
 
-	dbgDevice("watch-prop: watching properties")
+	fmt.Sprintf("watch-prop: watching properties")
 
 	channel, err := d.client.Register()
 	if err != nil {
@@ -88,27 +87,27 @@ func (d *Device) watchProperties() error {
 		for {
 
 			if channel == nil {
-				dbgDevice("watch-prop: nil channel, exit")
+				fmt.Sprintf("watch-prop: nil channel, exit")
 				break
 			}
 
-			dbgDevice("watch-prop: waiting updates")
+			fmt.Sprintf("watch-prop: waiting updates")
 			sig := <-channel
 
 			if sig == nil {
-				dbgDevice("watch-prop: nil sig, exit")
+				fmt.Sprintf("watch-prop: nil sig, exit")
 				return
 			}
 
-			dbgDevice("watch-prop: signal name %s", sig.Name)
+			fmt.Sprintf("watch-prop: signal name %s", sig.Name)
 			if sig.Name != bluez.PropertiesChanged {
-				dbgDevice("Skipped %s vs %s\n", sig.Name, bluez.PropertiesInterface)
+				fmt.Sprintf("Skipped %s vs %s\n", sig.Name, bluez.PropertiesInterface)
 				continue
 			}
 
-			dbgDevice("Device property changed")
+			fmt.Sprintf("Device property changed")
 			for i := 0; i < len(sig.Body); i++ {
-				dbgDevice("%s -> %s", reflect.TypeOf(sig.Body[i]), sig.Body[i])
+				fmt.Sprintf("%s -> %s", reflect.TypeOf(sig.Body[i]), sig.Body[i])
 			}
 
 			iface := sig.Body[0].(string)
@@ -128,11 +127,11 @@ func (d *Device) watchProperties() error {
 					if f.CanSet() {
 						x := reflect.ValueOf(val.Value())
 						f.Set(x)
-						dbgDevice("Set props value: %s = %s\n", field, x.Interface())
+						fmt.Sprintf("Set props value: %s = %s\n", field, x.Interface())
 					}
 				}
 
-				dbgDevice("Emit change for %s = %v\n", field, val.Value())
+				fmt.Sprintf("Emit change for %s = %v\n", field, val.Value())
 				propChanged := PropertyChangedEvent{string(iface), field, val.Value(), props, d}
 				d.Emit("changed", propChanged)
 			}
@@ -247,31 +246,32 @@ func (d *Device) GetAllServicesAndUUID() ([]string, error) {
 	list := d.GetCharsList()
 
 	//log.Debug("Find by uuid, char list %d, cached list %d", len(list), len(d.chars))
-	
+
 	var deviceFound []string
 	var uuidAndService string
 	for _, path := range list {
-		
+
 		// use cache
 		_, ok := d.chars[path]
 		if !ok {
 			d.chars[path] = profile.NewGattCharacteristic1(string(path))
 		}
-		
+
 		props := d.chars[path].Properties
 		cuuid := strings.ToUpper(props.UUID)
 		service := string(props.Service)
 
-		uuidAndService = fmt.Sprint(cuuid,":",service)
+		uuidAndService = fmt.Sprint(cuuid, ":", service)
 		deviceFound = append(deviceFound, uuidAndService)
 	}
 
 	if deviceFound == nil {
-		//dbgDevice("Characteristic not Found: %s ", uuid)
+		//fmt.Sprintf("Characteristic not Found: %s ", uuid)
 	}
 
-	return deviceFound,nil
+	return deviceFound, nil
 }
+
 //.....................................................................
 
 //GetCharByUUID return a GattService by its uuid, return nil if not found
@@ -281,7 +281,7 @@ func (d *Device) GetCharByUUID(uuid string) (*profile.GattCharacteristic1, error
 
 	list := d.GetCharsList()
 
-	dbgDevice("Find by uuid, char list %d, cached list %d", len(list), len(d.chars))
+	fmt.Sprintf("Find by uuid, char list %d, cached list %d", len(list), len(d.chars))
 
 	var deviceFound *profile.GattCharacteristic1
 
@@ -297,13 +297,13 @@ func (d *Device) GetCharByUUID(uuid string) (*profile.GattCharacteristic1, error
 		cuuid := strings.ToUpper(props.UUID)
 		//log.Debug("Properties : ",props)
 		if cuuid == uuid {
-			dbgDevice("Found char %s", uuid)
+			fmt.Sprintf("Found char %s", uuid)
 			deviceFound = d.chars[path]
 		}
 	}
 
 	if deviceFound == nil {
-		dbgDevice("Characteristic not Found: %s ", uuid)
+		fmt.Sprintf("Characteristic not Found: %s ", uuid)
 	}
 
 	return deviceFound, nil
@@ -320,11 +320,11 @@ func (d *Device) GetCharsList() []dbus.ObjectPath {
 			chars = append(chars, objpath)
 		}
 
-		dbgDevice("Cached %d chars", len(chars))
+		fmt.Sprintf("Cached %d chars", len(chars))
 		return chars
 	}
 
-	dbgDevice("Scanning chars by ObjectPath")
+	fmt.Sprintf("Scanning chars by ObjectPath")
 	list := GetManager().GetObjects()
 	for objpath := range *list {
 		path := string(objpath)
@@ -342,7 +342,7 @@ func (d *Device) GetCharsList() []dbus.ObjectPath {
 		chars = append(chars, objpath)
 	}
 
-	dbgDevice("Found %d chars", len(chars))
+	fmt.Sprintf("Found %d chars", len(chars))
 	return chars
 }
 

@@ -4,10 +4,7 @@ import (
 	"errors"
 
 	"github.com/godbus/dbus"
-	"github.com/tj/go-debug"
 )
-
-var dbg = debug.Debug("bluez:dbus")
 
 //BusType a type of DBus connection
 type BusType int
@@ -31,7 +28,7 @@ type Config struct {
 
 //GetConnection get a DBus connection
 func GetConnection(connType BusType) (*dbus.Conn, error) {
-	dbg("Get connection %d", connType)
+	fmt.Sprintf("Get connection %d", connType)
 	switch connType {
 	case SystemBus:
 		{

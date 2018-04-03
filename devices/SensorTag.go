@@ -4,21 +4,20 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"time"
-	"math"
+	"fmt"
 	"github.com/godbus/dbus"
+	"github.com/op/go-logging"
 	"github.com/saurabh-newera/BLE/api"
 	"github.com/saurabh-newera/BLE/bluez"
 	"github.com/saurabh-newera/BLE/bluez/profile"
 	"github.com/saurabh-newera/BLE/emitter"
-	"github.com/op/go-logging"
-	"github.com/tj/go-debug"
+	"math"
 	"strings"
-	"fmt"
+	"time"
 )
+
 var log = logging.MustGetLogger("examples")
 var logger = logging.MustGetLogger("main")
-var dbgTag = debug.Debug("bluez:sensortag")
 
 var dataChannel chan dbus.Signal
 
@@ -58,24 +57,23 @@ var sensorTagUUIDs = map[string]string{
 
 	"OADImageIdentify": "FFC1",
 	"OADImageBlock":    "FFC2",
-	
-	
+
 	"MPU9250_DATA_UUID":   "AA81",
 	"MPU9250_CONFIG_UUID": "AA82",
 	"MPU9250_PERIOD_UUID": "AA83",
-	
-	"LUXOMETER_CONFIG_UUID":  "aa72",
-	"LUXOMETER_DATA_UUID":    "aa71",
-	"LUXOMETER_PERIOD_UUID":  "aa73",
-	
-	"DEVICE_INFORMATION_UUID":			"180A",
-	"SYSTEM_ID_UUID":					"2A23",
-	"MODEL_NUMBER_UUID":				"2A24",
-	"SERIAL_NUMBER_UUID":				"2A25",
-	"FIRMWARE_REVISION_UUID":			"2A26",
-	"HARDWARE_REVISION_UUID":			"2A27",
-	"SOFTWARE_REVISION_UUID":			"2A28",
-	"MANUFACTURER_NAME_UUID":			"2A29",
+
+	"LUXOMETER_CONFIG_UUID": "aa72",
+	"LUXOMETER_DATA_UUID":   "aa71",
+	"LUXOMETER_PERIOD_UUID": "aa73",
+
+	"DEVICE_INFORMATION_UUID": "180A",
+	"SYSTEM_ID_UUID":          "2A23",
+	"MODEL_NUMBER_UUID":       "2A24",
+	"SERIAL_NUMBER_UUID":      "2A25",
+	"FIRMWARE_REVISION_UUID":  "2A26",
+	"HARDWARE_REVISION_UUID":  "2A27",
+	"SOFTWARE_REVISION_UUID":  "2A28",
+	"MANUFACTURER_NAME_UUID":  "2A29",
 }
 
 //Period =[Input*10]ms,(lowerlimit 300 ms, max 2500ms),default 1000 ms
@@ -104,24 +102,24 @@ func getDeviceInfoUUID(name string) string {
 func newHumiditySensor(tag *SensorTag) (HumiditySensor, error) {
 
 	dev := tag.Device
-	
+
 	HumidityConfigUUID := getUUID("HumidityConfig")
 	HumidityDataUUID := getUUID("HumidityData")
 	HumidityPeriodUUID := getUUID("HumidityPeriod")
-	
+
 	retry := 3
 	tries := 0
 	var loadChars func() (HumiditySensor, error)
 
 	loadChars = func() (HumiditySensor, error) {
 
-		dbgTag("Load humid cfg")
+		fmt.Sprintf("Load humid cfg")
 		cfg, err := dev.GetCharByUUID(HumidityConfigUUID)
 
 		if err != nil {
 			return HumiditySensor{}, err
 		}
-	
+
 		if cfg == nil {
 
 			if tries == retry {
@@ -130,12 +128,12 @@ func newHumiditySensor(tag *SensorTag) (HumiditySensor, error) {
 
 			tries++
 			time.Sleep(time.Second * time.Duration(5*tries))
-			dbgTag("Char not found, try to reload")
+			fmt.Sprintf("Char not found, try to reload")
 
 			return loadChars()
 		}
 
-		dbgTag("Load humid data")
+		fmt.Sprintf("Load humid data")
 		data, err := dev.GetCharByUUID(HumidityDataUUID)
 		if err != nil {
 			return HumiditySensor{}, err
@@ -144,7 +142,7 @@ func newHumiditySensor(tag *SensorTag) (HumiditySensor, error) {
 			return HumiditySensor{}, errors.New("Cannot find HumidityData characteristic " + HumidityDataUUID)
 		}
 
-		dbgTag("Load temp period")
+		fmt.Sprintf("Load temp period")
 		period, err := dev.GetCharByUUID(HumidityPeriodUUID)
 		if err != nil {
 			return HumiditySensor{}, err
@@ -243,7 +241,7 @@ func (s *HumiditySensor) IsNotifying() (bool, error) {
 
 func (s *HumiditySensor) Read() (float64, error) {
 
-	dbgTag("Reading humidity sensor")
+	fmt.Sprintf("Reading humidity sensor")
 
 	err := s.Enable()
 	if err != nil {
@@ -253,13 +251,13 @@ func (s *HumiditySensor) Read() (float64, error) {
 	options := make(map[string]dbus.Variant)
 	b, err := s.data.ReadValue(options)
 
-	dbgTag("Read data: %v", b)
+	fmt.Sprintf("Read data: %v", b)
 
 	if err != nil {
 		return 0, err
 	}
 
-	 //die := binary.LittleEndian.Uint16(b[0:2])
+	//die := binary.LittleEndian.Uint16(b[0:2])
 	amb := binary.LittleEndian.Uint16(b[2:])
 
 	//dieValue := calcTmpTarget(uint16(die))
@@ -275,23 +273,23 @@ func (s *HumiditySensor) StartNotify(macAddress string) error {
 	d := s.tag.Device
 	serv, err1 := d.GetAllServicesAndUUID()
 
-		if err1 != nil {
-		
+	if err1 != nil {
+
+	}
+	var uuidAndService string
+	serviceArrLength := len(serv)
+	for i := 0; i < serviceArrLength; i++ {
+
+		//log.Debug("value of all services and uuid's for Humidity sensor : ",serv[i])
+
+		val := strings.Split(serv[i], ":")
+
+		if val[0] == "F000AA22-0451-4000-B000-000000000000" {
+			//log.Debug("value of service and uuid for Humidity sensor : ",val)
+			uuidAndService = val[1]
 		}
-		var uuidAndService string
-		serviceArrLength := len(serv)
-		for i := 0; i < serviceArrLength; i++{
-		
-			//log.Debug("value of all services and uuid's for Humidity sensor : ",serv[i])
-			
-			 val := strings.Split(serv[i], ":")
-			 
-			 if val[0] == "F000AA22-0451-4000-B000-000000000000" {
-				//log.Debug("value of service and uuid for Humidity sensor : ",val)
-				uuidAndService = val[1]
-			}
-		}	
-	dbgTag("Enabling dataChannel for humidity")
+	}
+	fmt.Sprintf("Enabling dataChannel for humidity")
 
 	err := s.Enable()
 	if err != nil {
@@ -311,63 +309,63 @@ func (s *HumiditySensor) StartNotify(macAddress string) error {
 			if event1 == nil {
 				return
 			}
-		
-			if (strings.Contains(fmt.Sprint(event1.Path), uuidAndService)){
-			
+
+			if strings.Contains(fmt.Sprint(event1.Path), uuidAndService) {
+
 				//log.Debug("Got update dataChannel: ", event1)
-			
+
 				//log.Debug("Value of event1.name: ", event1.Name)
 				//log.Debug("name of service and char: ", event1.Path)
-			
+
 				switch event1.Body[0].(type) {
-				
-					case dbus.ObjectPath:
-						//log.Debug("Received body type does not match: [0] %v -> [1] %v", event1.Body[0], event1.Body[1])
-						continue
-					
-					case string:
-						//log.Debug("body type match")
+
+				case dbus.ObjectPath:
+					//log.Debug("Received body type does not match: [0] %v -> [1] %v", event1.Body[0], event1.Body[1])
+					continue
+
+				case string:
+					//log.Debug("body type match")
 				}
 
 				if event1.Body[0] != bluez.GattCharacteristic1Interface {
-					// dbgTag("Skip interface %s", event1.Body[0])
-				
+					// fmt.Sprintf("Skip interface %s", event1.Body[0])
+
 					continue
 				}
 
 				props1 := event1.Body[1].(map[string]dbus.Variant)
 
 				if _, ok := props1["Value"]; !ok {
-					// dbgTag("Cannot read Value property %v", props1)
+					// fmt.Sprintf("Cannot read Value property %v", props1)
 					continue
 				}
 
 				b1 := props1["Value"].Value().([]byte)
 				//log.Debug("length of data for humidity: ",len(b1)," ,humidity data: ",b1)
-				dbgTag("Read data: %v", b1)
+				fmt.Sprintf("Read data: %v", b1)
 
 				humid := binary.LittleEndian.Uint16(b1[2:])
 
 				humidityValue := calcHumidLocal(uint16(humid))
 
 				temperature := binary.LittleEndian.Uint16(b1[0:2])
-			 
+
 				// log.Debug("temperature from humidity sensor: ",temperature)
-			 
+
 				tempValue := calcTmpFromHumidSensor(uint16(temperature))
 				//log.Debug("temperature from humid: ",tempValue)
-			
-				dbgTag("Got data %v", humidityValue)
+
+				fmt.Sprintf("Got data %v", humidityValue)
 				//log.Debug("humidValue: ",humidityValue)
 				dataEvent := api.DataEvent{
-				
-					Device: 			s.tag.Device,
-					SensorType: 		"humidity",
-					HumidityValue:  	humidityValue,
-					HumidityUnit:  		"%RH",
-					HumidityTempValue:  tempValue,
-					HumidityTempUnit:   "C",
-					SensorId:			macAddress,
+
+					Device:            s.tag.Device,
+					SensorType:        "humidity",
+					HumidityValue:     humidityValue,
+					HumidityUnit:      "%RH",
+					HumidityTempValue: tempValue,
+					HumidityTempUnit:  "C",
+					SensorId:          macAddress,
 				}
 				s.tag.Device.Emit("data", dataEvent)
 			}
@@ -388,7 +386,7 @@ func (s *HumiditySensor) StartNotify(macAddress string) error {
 
 func (s *HumiditySensor) StopNotify() error {
 
-	dbgTag("Disabling dataChannel")
+	fmt.Sprintf("Disabling dataChannel")
 
 	err := s.Disable()
 	if err != nil {
@@ -414,20 +412,18 @@ func (s *HumiditySensor) StopNotify() error {
 var calcHumidLocal = func(raw uint16) float64 {
 
 	//.....................humidity calibiration.......................
-	
-	return float64(raw)* 100 / 65536.0
+
+	return float64(raw) * 100 / 65536.0
 }
 
+var calcTmpFromHumidSensor = func(raw uint16) float64 {
 
- var calcTmpFromHumidSensor = func(raw uint16) float64 {
-	
 	//.......TEMPERATURE calibiration for data comming from humidity sensor..............
-	
-	return -40 + ((165  * float64(raw)) / 65536.0);
-	
- }
- 
- 
+
+	return -40 + ((165 * float64(raw)) / 65536.0)
+
+}
+
 //..................................end of humidity sensor.....................................
 
 //.................................MPU SENSORS (Accelerometer,magnetometer,gyroscope)..........
@@ -439,18 +435,18 @@ func newMpuSensor(tag *SensorTag) (MpuSensor, error) {
 	dev := tag.Device
 
 	//...........accelerometer,magnetometer,gyroscope..........
-	
+
 	MpuConfigUUID := getUUID("MPU9250_CONFIG_UUID")
 	MpuDataUUID := getUUID("MPU9250_DATA_UUID")
 	MpuPeriodUUID := getUUID("MPU9250_PERIOD_UUID")
-	
+
 	retry := 3
 	tries := 0
 	var loadChars func() (MpuSensor, error)
 
 	loadChars = func() (MpuSensor, error) {
 
-		dbgTag("Load mpu cfg")
+		fmt.Sprintf("Load mpu cfg")
 		cfg, err := dev.GetCharByUUID(MpuConfigUUID)
 
 		if err != nil {
@@ -465,12 +461,12 @@ func newMpuSensor(tag *SensorTag) (MpuSensor, error) {
 
 			tries++
 			time.Sleep(time.Second * time.Duration(5*tries))
-			dbgTag("Char not found, try to reload")
+			fmt.Sprintf("Char not found, try to reload")
 
 			return loadChars()
 		}
 
-		dbgTag("Load mpu data")
+		fmt.Sprintf("Load mpu data")
 		data, err := dev.GetCharByUUID(MpuDataUUID)
 		if err != nil {
 			return MpuSensor{}, err
@@ -479,7 +475,7 @@ func newMpuSensor(tag *SensorTag) (MpuSensor, error) {
 			return MpuSensor{}, errors.New("Cannot find MpuData characteristic " + MpuDataUUID)
 		}
 
-		dbgTag("Load mpu period")
+		fmt.Sprintf("Load mpu period")
 		period, err := dev.GetCharByUUID(MpuPeriodUUID)
 		if err != nil {
 			return MpuSensor{}, err
@@ -523,16 +519,16 @@ func (s *MpuSensor) Enable() error {
 	//0x0007
 	//0x7f
 	/*
-	var bs []byte
-	 var b [2]byte
-	 b[0] = 0x0007f
-	 b[1] = 0x0007f
-	 bs = b[:2]
-	 */
-	err = s.cfg.WriteValue([]byte{0x0007f,0x0007f}, options)
+		var bs []byte
+		 var b [2]byte
+		 b[0] = 0x0007f
+		 b[1] = 0x0007f
+		 bs = b[:2]
+	*/
+	err = s.cfg.WriteValue([]byte{0x0007f, 0x0007f}, options)
 	//err = s.cfg.WriteValue(bs, options)
 	if err != nil {
-	//log.Debug("errorrr: ",err)
+		//log.Debug("errorrr: ",err)
 		return err
 	}
 	return nil
@@ -589,7 +585,7 @@ func (s *MpuSensor) IsNotifying() (bool, error) {
 
 func (s *MpuSensor) Read() (float64, error) {
 
-	dbgTag("Reading mpu sensor")
+	fmt.Sprintf("Reading mpu sensor")
 
 	err := s.Enable()
 	if err != nil {
@@ -599,13 +595,13 @@ func (s *MpuSensor) Read() (float64, error) {
 	options := make(map[string]dbus.Variant)
 	b, err := s.data.ReadValue(options)
 
-	dbgTag("Read data: %v", b)
+	fmt.Sprintf("Read data: %v", b)
 
 	if err != nil {
 		return 0, err
 	}
 
-	 //die := binary.LittleEndian.Uint16(b[0:2])
+	//die := binary.LittleEndian.Uint16(b[0:2])
 	amb := binary.LittleEndian.Uint16(b[2:])
 
 	//dieValue := calcTmpTarget(uint16(die))
@@ -622,22 +618,22 @@ func (s *MpuSensor) StartNotify(macAddress string) error {
 	d := s.tag.Device
 	serv, err1 := d.GetAllServicesAndUUID()
 
-		if err1 != nil {
-		
+	if err1 != nil {
+
+	}
+	var uuidAndService string
+	serviceArrLength := len(serv)
+	for i := 0; i < serviceArrLength; i++ {
+
+		//log.Debug("value of all service's and uuid's for mpu sensor :",serv[i])
+		val := strings.Split(serv[i], ":")
+
+		if val[0] == "F000AA82-0451-4000-B000-000000000000" {
+			//log.Debug("value of service and uuid for mpu sensor : ",val)
+			uuidAndService = val[1]
 		}
-		var uuidAndService string
-		serviceArrLength := len(serv)
-		for i := 0; i < serviceArrLength; i++{
-		
-			//log.Debug("value of all service's and uuid's for mpu sensor :",serv[i])
-			 val := strings.Split(serv[i], ":")
-			 
-			 if val[0] == "F000AA82-0451-4000-B000-000000000000" {
-				//log.Debug("value of service and uuid for mpu sensor : ",val)
-				uuidAndService = val[1]
-			}
-		}	
-	dbgTag("Enabling mpuDataChannel")
+	}
+	fmt.Sprintf("Enabling mpuDataChannel")
 
 	err := s.Enable()
 	if err != nil {
@@ -655,86 +651,84 @@ func (s *MpuSensor) StartNotify(macAddress string) error {
 			if event1 == nil {
 				return
 			}
-			
-			if (strings.Contains(fmt.Sprint(event1.Path), uuidAndService)){
-			
+
+			if strings.Contains(fmt.Sprint(event1.Path), uuidAndService) {
+
 				//log.Debug("Got update  mpu dataChannel: ", event1)
 				//log.Debug("Value of event1.name: ", event1.Name)
 				//log.Debug("name of service and char: ", event1.Path)
-			
+
 				switch event1.Body[0].(type) {
-			
-					case dbus.ObjectPath:
-						//log.Debug("Received body type does not match: [0] %v -> [1] %v", event1.Body[0], event1.Body[1])
-						continue
-					case string:
-						//log.Debug("body type match")
+
+				case dbus.ObjectPath:
+					//log.Debug("Received body type does not match: [0] %v -> [1] %v", event1.Body[0], event1.Body[1])
+					continue
+				case string:
+					//log.Debug("body type match")
 				}
 
 				if event1.Body[0] != bluez.GattCharacteristic1Interface {
-					// dbgTag("Skip interface %s", event1.Body[0])
-				
+					// fmt.Sprintf("Skip interface %s", event1.Body[0])
+
 					continue
 				}
 
 				props1 := event1.Body[1].(map[string]dbus.Variant)
 
 				if _, ok := props1["Value"]; !ok {
-					// dbgTag("Cannot read Value property %v", props1)
+					// fmt.Sprintf("Cannot read Value property %v", props1)
 					continue
 				}
 
 				b1 := props1["Value"].Value().([]byte)
 				//log.Debug("length of data for mpu: ",len(b1)," ,mpu data: ",b1)
-			
-				var mpuAccelerometer  	string
-				var mpuGyroscope  		string
-				var mpuMagnetometer  	string
-			
+
+				var mpuAccelerometer string
+				var mpuGyroscope string
+				var mpuMagnetometer string
+
 				//.......... calculate Gyroscope .................................
-				
-				mpuXg	:= binary.LittleEndian.Uint16(b1[0:2])
-				mpuYg	:= binary.LittleEndian.Uint16(b1[2:4])
-				mpuZg	:= binary.LittleEndian.Uint16(b1[4:6])
-			
-				mpuGyX,mpuGyY,mpuGyZ:= calcMpuGyroscope(uint16(mpuXg),uint16(mpuYg),uint16(mpuZg))
+
+				mpuXg := binary.LittleEndian.Uint16(b1[0:2])
+				mpuYg := binary.LittleEndian.Uint16(b1[2:4])
+				mpuZg := binary.LittleEndian.Uint16(b1[4:6])
+
+				mpuGyX, mpuGyY, mpuGyZ := calcMpuGyroscope(uint16(mpuXg), uint16(mpuYg), uint16(mpuZg))
 				//log.Debug("Gyroscope: ",mpuGyX,mpuGyY,mpuGyZ)
-				mpuGyroscope = fmt.Sprint(mpuGyX," , ",mpuGyY," , ",mpuGyZ)
-			
+				mpuGyroscope = fmt.Sprint(mpuGyX, " , ", mpuGyY, " , ", mpuGyZ)
+
 				//.......... calculate Accelerometer .............................
-		
-				mpuXa	:= binary.LittleEndian.Uint16(b1[6:8])
-				mpuYa	:= binary.LittleEndian.Uint16(b1[8:10])
-				mpuZa	:= binary.LittleEndian.Uint16(b1[10:12])
-			
-				mpuAcX,mpuAcY,mpuAcZ:= calcMpuAccelerometer(uint16(mpuXa),uint16(mpuYa),uint16(mpuZa))
+
+				mpuXa := binary.LittleEndian.Uint16(b1[6:8])
+				mpuYa := binary.LittleEndian.Uint16(b1[8:10])
+				mpuZa := binary.LittleEndian.Uint16(b1[10:12])
+
+				mpuAcX, mpuAcY, mpuAcZ := calcMpuAccelerometer(uint16(mpuXa), uint16(mpuYa), uint16(mpuZa))
 				//log.Debug("Accelerometer: ",mpuAcX,mpuAcY,mpuAcZ)
-				mpuAccelerometer = fmt.Sprint(mpuAcX," , ",mpuAcY," , ",mpuAcZ )
-			
+				mpuAccelerometer = fmt.Sprint(mpuAcX, " , ", mpuAcY, " , ", mpuAcZ)
+
 				//.......... calculate Magnetometer .............................
-		
-				mpuXm	:= binary.LittleEndian.Uint16(b1[12:14])
-				mpuYm	:= binary.LittleEndian.Uint16(b1[14:16])
-				mpuZm	:= binary.LittleEndian.Uint16(b1[16:18])
-			
-				mpuMgX,mpuMgY,mpuMgZ:= calcMpuMagnetometer(uint16(mpuXm),uint16(mpuYm),uint16(mpuZm))
+
+				mpuXm := binary.LittleEndian.Uint16(b1[12:14])
+				mpuYm := binary.LittleEndian.Uint16(b1[14:16])
+				mpuZm := binary.LittleEndian.Uint16(b1[16:18])
+
+				mpuMgX, mpuMgY, mpuMgZ := calcMpuMagnetometer(uint16(mpuXm), uint16(mpuYm), uint16(mpuZm))
 				//log.Debug("Magnetometer: ",mpuMgX,mpuMgY,mpuMgZ)
-				mpuMagnetometer = fmt.Sprint(mpuMgX," , ",mpuMgY," , ",mpuMgZ)
+				mpuMagnetometer = fmt.Sprint(mpuMgX, " , ", mpuMgY, " , ", mpuMgZ)
 				//log.Debug(mpuMagnetometer ,mpuAccelerometer ,mpuGyroscope )
 
-			
 				dataEvent := api.DataEvent{
-				
-					Device: 				s.tag.Device,
-					SensorType: 			"mpu",
-					MpuGyroscopeValue:   	mpuGyroscope ,
-					MpuGyroscopeUnit:    	"deg/s",
-					MpuAccelerometerValue: 	mpuAccelerometer ,
-					MpuAccelerometerUnit:  	"G",
-					MpuMagnetometerValue:   mpuMagnetometer ,
-					MpuMagnetometerUnit:    "uT",
-					SensorId:				macAddress,
-				
+
+					Device:                s.tag.Device,
+					SensorType:            "mpu",
+					MpuGyroscopeValue:     mpuGyroscope,
+					MpuGyroscopeUnit:      "deg/s",
+					MpuAccelerometerValue: mpuAccelerometer,
+					MpuAccelerometerUnit:  "G",
+					MpuMagnetometerValue:  mpuMagnetometer,
+					MpuMagnetometerUnit:   "uT",
+					SensorId:              macAddress,
 				}
 				s.tag.Device.Emit("data", dataEvent)
 			}
@@ -755,7 +749,7 @@ func (s *MpuSensor) StartNotify(macAddress string) error {
 
 func (s *MpuSensor) StopNotify() error {
 
-	dbgTag("Disabling dataChannel")
+	fmt.Sprintf("Disabling dataChannel")
 
 	err := s.Disable()
 	if err != nil {
@@ -778,39 +772,39 @@ func (s *MpuSensor) StopNotify() error {
 
 // Port from http://processors.wiki.ti.com/index.php/SensorTag_User_Guide#IR_Temperature_Sensor
 
- var calcMpuGyroscope = func(rawX,rawY,rawZ uint16) ( float64, float64, float64 )  {
- 
+var calcMpuGyroscope = func(rawX, rawY, rawZ uint16) (float64, float64, float64) {
+
 	//log.Debug(" calcMpuGyroscope  x,y,z values: ", rawX," : ", rawY," : ", rawZ)
 
 	/*Xg := float64(rawX) / (65536 / 500)
 	Yg := float64(rawY) / (65536 / 500)
 	Zg := float64(rawZ) / (65536 / 500)*/
-	
+
 	Xg := float64(rawX) / 128.0
 	Yg := float64(rawY) / 128.0
 	Zg := float64(rawZ) / 128.0
-	
-	return Xg,Yg,Zg  
+
+	return Xg, Yg, Zg
 }
-var calcMpuAccelerometer = func(rawX,rawY,rawZ uint16) ( float64, float64, float64 )  {
+var calcMpuAccelerometer = func(rawX, rawY, rawZ uint16) (float64, float64, float64) {
 
 	//log.Debug(" calcMpuAccelerometer  x,y,z values: ", rawX," : ", rawY," : ", rawZ)
 
 	Xg := float64(rawX) / 4096.0
 	Yg := float64(rawY) / 4096.0
 	Zg := float64(rawZ) / 4096.0
-	
-	return Xg,Yg,Zg  
+
+	return Xg, Yg, Zg
 }
-var calcMpuMagnetometer  = func(rawX,rawY,rawZ uint16) ( float64, float64, float64 )  {
+var calcMpuMagnetometer = func(rawX, rawY, rawZ uint16) (float64, float64, float64) {
 
 	//log.Debug(" calcMpuMagnetometer  x,y,z values: ", rawX," : ", rawY," : ", rawZ)
-	
+
 	Xg := float64(rawX) * 4912.0 / 32768.0
 	Yg := float64(rawY) * 4912.0 / 32768.0
 	Zg := float64(rawZ) * 4912.0 / 32768.0
-	
-	return Xg,Yg,Zg  
+
+	return Xg, Yg, Zg
 }
 
 //.................................. end of MpuSensor .........................................
@@ -822,24 +816,24 @@ var calcMpuMagnetometer  = func(rawX,rawY,rawZ uint16) ( float64, float64, float
 func newBarometricSensor(tag *SensorTag) (BarometricSensor, error) {
 
 	dev := tag.Device
-	
+
 	BarometerConfigUUID := getUUID("BarometerConfig")
 	BarometerDataUUID := getUUID("BarometerData")
 	BarometerPeriodUUID := getUUID("BarometerPeriod")
-	
+
 	retry := 3
 	tries := 0
 	var loadChars func() (BarometricSensor, error)
 
 	loadChars = func() (BarometricSensor, error) {
 
-		dbgTag("Load pressure cfg")
+		fmt.Sprintf("Load pressure cfg")
 		cfg, err := dev.GetCharByUUID(BarometerConfigUUID)
 
 		if err != nil {
 			return BarometricSensor{}, err
 		}
-		
+
 		if cfg == nil {
 
 			if tries == retry {
@@ -848,12 +842,12 @@ func newBarometricSensor(tag *SensorTag) (BarometricSensor, error) {
 
 			tries++
 			time.Sleep(time.Second * time.Duration(5*tries))
-			dbgTag("Char not found, try to reload")
+			fmt.Sprintf("Char not found, try to reload")
 
 			return loadChars()
 		}
 
-		dbgTag("Load barometer data")
+		fmt.Sprintf("Load barometer data")
 		data, err := dev.GetCharByUUID(BarometerDataUUID)
 		if err != nil {
 			return BarometricSensor{}, err
@@ -862,7 +856,7 @@ func newBarometricSensor(tag *SensorTag) (BarometricSensor, error) {
 			return BarometricSensor{}, errors.New("Cannot find BarometerData characteristic " + BarometerDataUUID)
 		}
 
-		dbgTag("Load barometer period")
+		fmt.Sprintf("Load barometer period")
 		period, err := dev.GetCharByUUID(BarometerPeriodUUID)
 		if err != nil {
 			return BarometricSensor{}, err
@@ -906,7 +900,7 @@ func (s *BarometricSensor) Enable() error {
 
 	err = s.cfg.WriteValue([]byte{1}, options)
 	if err != nil {
-	//log.Debug("errorrr: ",err)
+		//log.Debug("errorrr: ",err)
 		return err
 	}
 	return nil
@@ -963,7 +957,7 @@ func (s *BarometricSensor) IsNotifying() (bool, error) {
 
 func (s *BarometricSensor) Read() (float64, error) {
 
-	dbgTag("Reading BarometricSensor sensor")
+	fmt.Sprintf("Reading BarometricSensor sensor")
 
 	err := s.Enable()
 	if err != nil {
@@ -973,13 +967,13 @@ func (s *BarometricSensor) Read() (float64, error) {
 	options := make(map[string]dbus.Variant)
 	b, err := s.data.ReadValue(options)
 
-	dbgTag("Read data: %v", b)
+	fmt.Sprintf("Read data: %v", b)
 
 	if err != nil {
 		return 0, err
 	}
 
-	 //die := binary.LittleEndian.Uint16(b[0:2])
+	//die := binary.LittleEndian.Uint16(b[0:2])
 	amb := binary.LittleEndian.Uint16(b[2:])
 
 	//dieValue := calcTmpTarget(uint16(die))
@@ -995,22 +989,22 @@ func (s *BarometricSensor) StartNotify(macAddress string) error {
 	d := s.tag.Device
 	serv, err1 := d.GetAllServicesAndUUID()
 
-		if err1 != nil {
-		
+	if err1 != nil {
+
+	}
+	var uuidAndService string
+	serviceArrLength := len(serv)
+	for i := 0; i < serviceArrLength; i++ {
+
+		//log.Debug("value of all service's and uuid's for barometeric sensor : ",serv[i])
+		val := strings.Split(serv[i], ":")
+
+		if val[0] == "F000AA42-0451-4000-B000-000000000000" {
+			//log.Debug("value of service and uuid for barometeric sensor : ",val)
+			uuidAndService = val[1]
 		}
-		var uuidAndService string
-		serviceArrLength := len(serv)
-		for i := 0; i < serviceArrLength; i++{
-		
-			//log.Debug("value of all service's and uuid's for barometeric sensor : ",serv[i])
-			 val := strings.Split(serv[i], ":")
-			 
-			 if val[0] == "F000AA42-0451-4000-B000-000000000000" {
-				//log.Debug("value of service and uuid for barometeric sensor : ",val)
-				uuidAndService = val[1]
-			}
-		}	
-	dbgTag("Enabling BarometricSensorDataChannel")
+	}
+	fmt.Sprintf("Enabling BarometricSensorDataChannel")
 
 	err := s.Enable()
 	if err != nil {
@@ -1028,56 +1022,56 @@ func (s *BarometricSensor) StartNotify(macAddress string) error {
 			if event1 == nil {
 				return
 			}
-			if (strings.Contains(fmt.Sprint(event1.Path), uuidAndService)){
-			
+			if strings.Contains(fmt.Sprint(event1.Path), uuidAndService) {
+
 				//log.Debug("Got update  BarometricSensor dataChannel: ", event1)
 				//log.Debug("Value of event1.name: ", event1.Name)
 				//log.Debug("name of service and char: ", event1.Path)
-			
+
 				switch event1.Body[0].(type) {
-			
-					case dbus.ObjectPath:
-						//log.Debug("Received body type does not match: [0] %v -> [1] %v", event1.Body[0], event1.Body[1])
-						continue
-					case string:
-						//log.Debug("body type match")
+
+				case dbus.ObjectPath:
+					//log.Debug("Received body type does not match: [0] %v -> [1] %v", event1.Body[0], event1.Body[1])
+					continue
+				case string:
+					//log.Debug("body type match")
 				}
 
 				if event1.Body[0] != bluez.GattCharacteristic1Interface {
-					// dbgTag("Skip interface %s", event1.Body[0])
-				
+					// fmt.Sprintf("Skip interface %s", event1.Body[0])
+
 					continue
 				}
 
 				props1 := event1.Body[1].(map[string]dbus.Variant)
 
 				if _, ok := props1["Value"]; !ok {
-					// dbgTag("Cannot read Value property %v", props1)
+					// fmt.Sprintf("Cannot read Value property %v", props1)
 					continue
 				}
 
 				b1 := props1["Value"].Value().([]byte)
 				//log.Debug("length of data for barometer: ",len(b1)," ,barometer data: ",b1)
-				
+
 				barometer := binary.LittleEndian.Uint32(b1[2:])
 				barometericPressureValue := calcBarometricPressure(uint32(barometer))
-			
+
 				barometerTemperature := binary.LittleEndian.Uint32(b1[0:4])
 				barometerTempValue := calcBarometricTemperature(uint32(barometerTemperature))
-	
-				dbgTag("Got data %v", barometericPressureValue)
+
+				fmt.Sprintf("Got data %v", barometericPressureValue)
 
 				dataEvent := api.DataEvent{
-				
-					Device: 					s.tag.Device,
-					SensorType: 				"pressure",
-					BarometericPressureValue:  	barometericPressureValue,
-					BarometericPressureUnit:   	"hPa",
-					BarometericTempValue:   	barometerTempValue,
-					BarometericTempUnit:   		"C",
-					SensorId:					macAddress,
+
+					Device:                   s.tag.Device,
+					SensorType:               "pressure",
+					BarometericPressureValue: barometericPressureValue,
+					BarometericPressureUnit:  "hPa",
+					BarometericTempValue:     barometerTempValue,
+					BarometericTempUnit:      "C",
+					SensorId:                 macAddress,
 				}
-				s.tag.Device.Emit("data",dataEvent )
+				s.tag.Device.Emit("data", dataEvent)
 			}
 		}
 	}()
@@ -1096,7 +1090,7 @@ func (s *BarometricSensor) StartNotify(macAddress string) error {
 
 func (s *BarometricSensor) StopNotify() error {
 
-	dbgTag("Disabling dataChannel")
+	fmt.Sprintf("Disabling dataChannel")
 
 	err := s.Disable()
 	if err != nil {
@@ -1122,20 +1116,20 @@ func (s *BarometricSensor) StopNotify() error {
 var calcBarometricPressure = func(raw uint32) float64 {
 
 	//.......barometric pressure......
-	
-	 pressureMask := (int(raw) >> 8) & 0x00ffffff
-	 return float64( pressureMask ) / 100.0
+
+	pressureMask := (int(raw) >> 8) & 0x00ffffff
+	return float64(pressureMask) / 100.0
 }
 
- var  calcBarometricTemperature = func(raw uint32) float64 {
-	
+var calcBarometricTemperature = func(raw uint32) float64 {
+
 	//.......TEMPERATURE calibiration data comming from barometric sensor...........
-	
+
 	//return (float64(raw) & 0x00ffffff)/ 100.0;
 	tempMask := int(raw) & 0x00ffffff
-	return float64(tempMask )/ 100.0;
-	
- }
+	return float64(tempMask) / 100.0
+
+}
 
 //.................................. end of BarometricSensor ..............................
 
@@ -1146,18 +1140,18 @@ var calcBarometricPressure = func(raw uint32) float64 {
 func newTemperatureSensor(tag *SensorTag) (TemperatureSensor, error) {
 
 	dev := tag.Device
-	
+
 	TemperatureConfigUUID := getUUID("TemperatureConfig")
 	TemperatureDataUUID := getUUID("TemperatureData")
 	TemperaturePeriodUUID := getUUID("TemperaturePeriod")
-	
+
 	retry := 3
 	tries := 0
 	var loadChars func() (TemperatureSensor, error)
 
 	loadChars = func() (TemperatureSensor, error) {
 
-		dbgTag("Load temp cfg")
+		fmt.Sprintf("Load temp cfg")
 		cfg, err := dev.GetCharByUUID(TemperatureConfigUUID)
 
 		if err != nil {
@@ -1172,12 +1166,12 @@ func newTemperatureSensor(tag *SensorTag) (TemperatureSensor, error) {
 
 			tries++
 			time.Sleep(time.Second * time.Duration(5*tries))
-			dbgTag("Char not found, try to reload")
+			fmt.Sprintf("Char not found, try to reload")
 
 			return loadChars()
 		}
 
-		dbgTag("Load temp data")
+		fmt.Sprintf("Load temp data")
 		data, err := dev.GetCharByUUID(TemperatureDataUUID)
 		if err != nil {
 			return TemperatureSensor{}, err
@@ -1186,7 +1180,7 @@ func newTemperatureSensor(tag *SensorTag) (TemperatureSensor, error) {
 			return TemperatureSensor{}, errors.New("Cannot find TemperatureData characteristic " + TemperatureDataUUID)
 		}
 
-		dbgTag("Load temp period")
+		fmt.Sprintf("Load temp period")
 		period, err := dev.GetCharByUUID(TemperaturePeriodUUID)
 		if err != nil {
 			return TemperatureSensor{}, err
@@ -1282,23 +1276,23 @@ func (s *TemperatureSensor) IsNotifying() (bool, error) {
 var calcTmpLocal = func(raw uint16) float64 {
 
 	//.......ambient temperature calberation..............
-	
+
 	return float64(raw) / 128.0
-	
+
 }
 
 /* Conversion algorithm for target temperature */
- var calcTmpTarget = func(raw uint16) float64 {
-	
+var calcTmpTarget = func(raw uint16) float64 {
+
 	//.........object temperature caliberation...........
-	
+
 	return float64(raw) / 128.0
- }
+}
 
 //Read value from the sensor
 func (s *TemperatureSensor) Read() (float64, error) {
 
-	dbgTag("Reading temperature sensor")
+	fmt.Sprintf("Reading temperature sensor")
 
 	err := s.Enable()
 	if err != nil {
@@ -1308,13 +1302,13 @@ func (s *TemperatureSensor) Read() (float64, error) {
 	options := make(map[string]dbus.Variant)
 	b, err := s.data.ReadValue(options)
 
-	dbgTag("Read data: %v", b)
+	fmt.Sprintf("Read data: %v", b)
 
 	if err != nil {
 		return 0, err
 	}
 
-	 //die := binary.LittleEndian.Uint16(b[0:2])
+	//die := binary.LittleEndian.Uint16(b[0:2])
 	amb := binary.LittleEndian.Uint16(b[2:])
 
 	//dieValue := calcTmpTarget(uint16(die))
@@ -1330,22 +1324,22 @@ func (s *TemperatureSensor) StartNotify(macAddress string) error {
 	d := s.tag.Device
 	serv, err1 := d.GetAllServicesAndUUID()
 
-		if err1 != nil {
-		
+	if err1 != nil {
+
+	}
+	var uuidAndService string
+	serviceArrLength := len(serv)
+	for i := 0; i < serviceArrLength; i++ {
+
+		val := strings.Split(serv[i], ":")
+
+		if val[0] == "F000AA01-0451-4000-B000-000000000000" {
+			//log.Debug("value of service and uuid for Temperature sensor : ",val)
+			uuidAndService = val[1]
 		}
-		var uuidAndService string
-		serviceArrLength := len(serv)
-		for i := 0; i < serviceArrLength; i++{
-		
-			 val := strings.Split(serv[i], ":")
+	}
 
-			 if val[0] == "F000AA01-0451-4000-B000-000000000000" {
-				//log.Debug("value of service and uuid for Temperature sensor : ",val)
-				uuidAndService = val[1]
-			}
-		}	
-
-	dbgTag("Enabling DataChannel")
+	fmt.Sprintf("Enabling DataChannel")
 
 	err := s.Enable()
 	if err != nil {
@@ -1363,30 +1357,30 @@ func (s *TemperatureSensor) StartNotify(macAddress string) error {
 			if event == nil {
 				return
 			}
-			if (strings.Contains(fmt.Sprint(event.Path), uuidAndService)){
-			
-				// dbgTag("Got update %v", event)
+			if strings.Contains(fmt.Sprint(event.Path), uuidAndService) {
+
+				// fmt.Sprintf("Got update %v", event)
 				//log.Debug("Got update temperature DataChannel: ", event)
-			
+
 				switch event.Body[0].(type) {
-				
-					case dbus.ObjectPath:
-					// dbgTag("Received body type does not match: [0] %v -> [1] %v", event.Body[0], event.Body[1])
+
+				case dbus.ObjectPath:
+					// fmt.Sprintf("Received body type does not match: [0] %v -> [1] %v", event.Body[0], event.Body[1])
 					continue
-					
-					case string:
-					// dbgTag("body type match")
+
+				case string:
+					// fmt.Sprintf("body type match")
 				}
 
 				if event.Body[0] != bluez.GattCharacteristic1Interface {
-					// dbgTag("Skip interface %s", event.Body[0])
+					// fmt.Sprintf("Skip interface %s", event.Body[0])
 					continue
 				}
 
 				props := event.Body[1].(map[string]dbus.Variant)
 
 				if _, ok := props["Value"]; !ok {
-					// dbgTag("Cannot read Value property %v", props)
+					// fmt.Sprintf("Cannot read Value property %v", props)
 					continue
 				}
 
@@ -1397,19 +1391,19 @@ func (s *TemperatureSensor) StartNotify(macAddress string) error {
 				ambientValue := calcTmpLocal(uint16(amb))
 
 				die := binary.LittleEndian.Uint16(b[0:2])
-				dieValue := calcTmpTarget(uint16(die))			
+				dieValue := calcTmpTarget(uint16(die))
 
 				//log.Debug("ambientValue: ",ambientValue)
-				
+
 				dataEvent := api.DataEvent{
-				
-					Device: 			s.tag.Device,
-					SensorType: 		"temperature",
-					AmbientTempValue:  	ambientValue,
-					AmbientTempUnit:   	"C",
-					ObjectTempValue:   	dieValue,
-					ObjectTempUnit:   	"C",
-					SensorId:			macAddress,
+
+					Device:           s.tag.Device,
+					SensorType:       "temperature",
+					AmbientTempValue: ambientValue,
+					AmbientTempUnit:  "C",
+					ObjectTempValue:  dieValue,
+					ObjectTempUnit:   "C",
+					SensorId:         macAddress,
 				}
 				s.tag.Device.Emit("data", dataEvent)
 			}
@@ -1429,7 +1423,7 @@ func (s *TemperatureSensor) StartNotify(macAddress string) error {
 //StopNotify disable temperature DataChannel
 func (s *TemperatureSensor) StopNotify() error {
 
-	dbgTag("Disabling temperature DataChannel")
+	fmt.Sprintf("Disabling temperature DataChannel")
 
 	err := s.Disable()
 	if err != nil {
@@ -1449,28 +1443,29 @@ func (s *TemperatureSensor) StopNotify() error {
 	}
 	return nil
 }
+
 //.................................end of temperature sensor...................................
 
 //.................................Luxometer Sensor............................................
 
 //....getting config,data,period characteristics for luxometer sensor.........................
 
-func  newLuxometerSensor(tag *SensorTag) (LuxometerSensor, error) {
+func newLuxometerSensor(tag *SensorTag) (LuxometerSensor, error) {
 
 	dev := tag.Device
-	
+
 	LuxometerConfigUUID := getUUID("LUXOMETER_CONFIG_UUID")
 	LuxometerDataUUID := getUUID("LUXOMETER_DATA_UUID")
 	LuxometerPeriodUUID := getUUID("LUXOMETER_PERIOD_UUID")
-	
+
 	retry := 3
 	tries := 0
 	var loadChars func() (LuxometerSensor, error)
 
 	loadChars = func() (LuxometerSensor, error) {
 
-		dbgTag("Load luxometer cfg")
-		cfg, err := dev.GetCharByUUID(LuxometerConfigUUID )
+		fmt.Sprintf("Load luxometer cfg")
+		cfg, err := dev.GetCharByUUID(LuxometerConfigUUID)
 
 		if err != nil {
 			return LuxometerSensor{}, err
@@ -1479,32 +1474,32 @@ func  newLuxometerSensor(tag *SensorTag) (LuxometerSensor, error) {
 		if cfg == nil {
 
 			if tries == retry {
-				return LuxometerSensor{}, errors.New("Cannot find LuxometerConfigUUID  characteristic " +LuxometerConfigUUID )
+				return LuxometerSensor{}, errors.New("Cannot find LuxometerConfigUUID  characteristic " + LuxometerConfigUUID)
 			}
 
 			tries++
 			time.Sleep(time.Second * time.Duration(5*tries))
-			dbgTag("Char not found, try to reload")
+			fmt.Sprintf("Char not found, try to reload")
 
 			return loadChars()
 		}
 
-		dbgTag("Load luxometer data")
-		data, err := dev.GetCharByUUID(LuxometerDataUUID )
+		fmt.Sprintf("Load luxometer data")
+		data, err := dev.GetCharByUUID(LuxometerDataUUID)
 		if err != nil {
 			return LuxometerSensor{}, err
 		}
 		if data == nil {
-			return LuxometerSensor{}, errors.New("Cannot find LuxometerDataUUID  characteristic " +LuxometerDataUUID )
+			return LuxometerSensor{}, errors.New("Cannot find LuxometerDataUUID  characteristic " + LuxometerDataUUID)
 		}
 
-		dbgTag("Load luxometer period")
-		period, err := dev.GetCharByUUID(LuxometerPeriodUUID )
+		fmt.Sprintf("Load luxometer period")
+		period, err := dev.GetCharByUUID(LuxometerPeriodUUID)
 		if err != nil {
 			return LuxometerSensor{}, err
 		}
 		if period == nil {
-			return LuxometerSensor{}, errors.New("Cannot find LuxometerPeriodUUID  characteristic " +LuxometerPeriodUUID )
+			return LuxometerSensor{}, errors.New("Cannot find LuxometerPeriodUUID  characteristic " + LuxometerPeriodUUID)
 		}
 
 		return LuxometerSensor{tag, cfg, data, period}, err
@@ -1597,7 +1592,7 @@ func (s *LuxometerSensor) IsNotifying() (bool, error) {
 
 func (s *LuxometerSensor) Read() (float64, error) {
 
-	dbgTag("Reading LuxometerSensor sensor")
+	fmt.Sprintf("Reading LuxometerSensor sensor")
 
 	err := s.Enable()
 	if err != nil {
@@ -1607,13 +1602,13 @@ func (s *LuxometerSensor) Read() (float64, error) {
 	options := make(map[string]dbus.Variant)
 	b, err := s.data.ReadValue(options)
 
-	dbgTag("Read data: %v", b)
+	fmt.Sprintf("Read data: %v", b)
 
 	if err != nil {
 		return 0, err
 	}
 
-	 //die := binary.LittleEndian.Uint16(b[0:2])
+	//die := binary.LittleEndian.Uint16(b[0:2])
 	amb := binary.LittleEndian.Uint16(b[2:])
 
 	//dieValue := calcTmpTarget(uint16(die))
@@ -1630,22 +1625,22 @@ func (s *LuxometerSensor) StartNotify(macAddress string) error {
 	d := s.tag.Device
 	serv, err1 := d.GetAllServicesAndUUID()
 
-		if err1 != nil {
-		
+	if err1 != nil {
+
+	}
+	var uuidAndService string
+	serviceArrLength := len(serv)
+	for i := 0; i < serviceArrLength; i++ {
+
+		//log.Debug("value of all service's and uuid's for Luxometer sensor : ",serv[i])
+		val := strings.Split(serv[i], ":")
+
+		if val[0] == "F000AA71-0451-4000-B000-000000000000" {
+			//log.Debug("value of service and uuid for Luxometer sensor : ",val)
+			uuidAndService = val[1]
 		}
-		var uuidAndService string
-		serviceArrLength := len(serv)
-		for i := 0; i < serviceArrLength; i++{
-		
-			//log.Debug("value of all service's and uuid's for Luxometer sensor : ",serv[i])
-			 val := strings.Split(serv[i], ":")
-			 
-			 if val[0] == "F000AA71-0451-4000-B000-000000000000" {
-				//log.Debug("value of service and uuid for Luxometer sensor : ",val)
-				uuidAndService = val[1]
-			}
-		}	
-	dbgTag("Enabling LuxometerSensorDataChannel")
+	}
+	fmt.Sprintf("Enabling LuxometerSensorDataChannel")
 
 	err := s.Enable()
 	if err != nil {
@@ -1663,53 +1658,53 @@ func (s *LuxometerSensor) StartNotify(macAddress string) error {
 			if event1 == nil {
 				return
 			}
-			if (strings.Contains(fmt.Sprint(event1.Path), uuidAndService)){
-			
+			if strings.Contains(fmt.Sprint(event1.Path), uuidAndService) {
+
 				//log.Debug("Got update  LuxometerSensor dataChannel: ", event1)
 				//log.Debug("Value of event1.name: ", event1.Name)
 				//log.Debug("name of service and char: ", event1.Path)
-			
+
 				switch event1.Body[0].(type) {
-				
-					case dbus.ObjectPath:
-						//log.Debug("Received body type does not match: [0] %v -> [1] %v", event1.Body[0], event1.Body[1])
-						continue
-						
-					case string:
-						//log.Debug("body type match")
+
+				case dbus.ObjectPath:
+					//log.Debug("Received body type does not match: [0] %v -> [1] %v", event1.Body[0], event1.Body[1])
+					continue
+
+				case string:
+					//log.Debug("body type match")
 				}
 
 				if event1.Body[0] != bluez.GattCharacteristic1Interface {
-				
-					// dbgTag("Skip interface %s", event1.Body[0])
+
+					// fmt.Sprintf("Skip interface %s", event1.Body[0])
 					continue
 				}
 
 				props1 := event1.Body[1].(map[string]dbus.Variant)
 
 				if _, ok := props1["Value"]; !ok {
-				
-					// dbgTag("Cannot read Value property %v", props1)
+
+					// fmt.Sprintf("Cannot read Value property %v", props1)
 					continue
 				}
 
 				b1 := props1["Value"].Value().([]byte)
 				//log.Debug("length of data for luxometer: ",len(b1)," ,luxometer data: ",b1)
-			
+
 				luxometer := binary.LittleEndian.Uint16(b1[0:])
-				luxometerValue := calcLuxometer(uint16(luxometer ))
-			
+				luxometerValue := calcLuxometer(uint16(luxometer))
+
 				//log.Debug("luxometerValue: ",luxometerValue )
-			
+
 				dataEvent := api.DataEvent{
-				
-					Device: 					s.tag.Device,
-					SensorType: 				"luxometer",
-					LuxometerValue :  			luxometerValue ,
-					LuxometerUnit:   			"candela",
-					SensorId:					macAddress,
+
+					Device:         s.tag.Device,
+					SensorType:     "luxometer",
+					LuxometerValue: luxometerValue,
+					LuxometerUnit:  "candela",
+					SensorId:       macAddress,
 				}
-				s.tag.Device.Emit("data",dataEvent )
+				s.tag.Device.Emit("data", dataEvent)
 			}
 		}
 	}()
@@ -1728,7 +1723,7 @@ func (s *LuxometerSensor) StartNotify(macAddress string) error {
 
 func (s *LuxometerSensor) StopNotify() error {
 
-	dbgTag("Disabling dataChannel")
+	fmt.Sprintf("Disabling dataChannel")
 
 	err := s.Disable()
 	if err != nil {
@@ -1751,16 +1746,15 @@ func (s *LuxometerSensor) StopNotify() error {
 
 // Port from http://processors.wiki.ti.com/index.php/SensorTag_User_Guide#IR_Temperature_Sensor
 
-var  calcLuxometer = func(raw uint16) float64 {
-	
-	exponent := (int(raw)& 0xF000) >> 12
-	mantissa := (int(raw)& 0x0FFF)
-	exp :=  float64(exponent)
-	man := float64( mantissa )
-	flLux := man*math.Pow(2, exp) / 100
-	return float64(flLux )
-}
+var calcLuxometer = func(raw uint16) float64 {
 
+	exponent := (int(raw) & 0xF000) >> 12
+	mantissa := (int(raw) & 0x0FFF)
+	exp := float64(exponent)
+	man := float64(mantissa)
+	flLux := man * math.Pow(2, exp) / 100
+	return float64(flLux)
+}
 
 //.................................. end of LuxometerSensor .....................................
 
@@ -1786,10 +1780,10 @@ func NewSensorTag(d *api.Device) (*SensorTag, error) {
 			conn := changed.Value.(bool)
 			if !conn {
 
-				dbgTag("Device disconnected")
+				fmt.Sprintf("Device disconnected")
 
 				// TODO clean up properly
-				
+
 				if dataChannel != nil {
 					close(dataChannel)
 				}
@@ -1807,66 +1801,66 @@ func NewSensorTag(d *api.Device) (*SensorTag, error) {
 	s.Device = d
 
 	//initiating things for temperature sensor...(getting config,data,period characteristics...).....
-	
+
 	temp, err := newTemperatureSensor(s)
 	if err != nil {
 		return nil, err
 	}
 	s.Temperature = temp
-	
+
 	//initiating things for humidity sensor...(getting config,data,period characteristics...).....
-	
+
 	humid, err := newHumiditySensor(s)
 	if err != nil {
 		return nil, err
 	}
 	s.Humidity = humid
-	
+
 	//initiating things for AC,MG,GY sensor...(getting config,data,period characteristics...).....
-	
+
 	mpu, err := newMpuSensor(s)
 	if err != nil {
 		return nil, err
 	}
 	s.Mpu = mpu
-	
+
 	//initiating things barometric sensor...(getting config,data,period characteristics...).....
-	
+
 	barometric, err := newBarometricSensor(s)
 	if err != nil {
 		return nil, err
 	}
 	s.Barometric = barometric
-	
+
 	//initiating things luxometer sensor...(getting config,data,period characteristics...).....
-	
+
 	luxometer, err := newLuxometerSensor(s)
 	if err != nil {
 		return nil, err
 	}
-	s.Luxometer= luxometer
-	
+	s.Luxometer = luxometer
+
 	//initiating things for reading device info of  sensorTag...(getting firmware,hardware,manufacturer,model char...).....
-	
+
 	devInformation, err := newDeviceInfo(s)
 	if err != nil {
 		return nil, err
 	}
-	s.DeviceInfo= devInformation
-	
+	s.DeviceInfo = devInformation
+
 	return s, nil
-	
+
 }
 
 //SensorTag a SensorTag object representation
 type SensorTag struct {
 	*api.Device
-	Temperature 	TemperatureSensor
-	Humidity 		HumiditySensor
-	Mpu			 	MpuSensor
-	Barometric		BarometricSensor
-	Luxometer		LuxometerSensor
-	DeviceInfo		SensorTagDeviceInfo
+	Temperature TemperatureSensor
+	Humidity    HumiditySensor
+	Mpu         MpuSensor
+	Barometric  BarometricSensor
+	Luxometer   LuxometerSensor
+	DeviceInfo  SensorTagDeviceInfo
 }
 
 //Sensor generic sensor interface
@@ -1880,18 +1874,18 @@ type Sensor interface {
 func newDeviceInfo(tag *SensorTag) (SensorTagDeviceInfo, error) {
 
 	dev := tag.Device
-	
+
 	DeviceFirmwareUUID := getDeviceInfoUUID("FIRMWARE_REVISION_UUID")
 	DeviceHardwareUUID := getDeviceInfoUUID("HARDWARE_REVISION_UUID")
 	DeviceManufacturerUUID := getDeviceInfoUUID("MANUFACTURER_NAME_UUID")
 	DeviceModelUUID := getDeviceInfoUUID("MODEL_NUMBER_UUID")
-	
+
 	var loadChars func() (SensorTagDeviceInfo, error)
 
 	loadChars = func() (SensorTagDeviceInfo, error) {
 
-		dbgTag("Load device DeviceFirmwareUUID")
-		
+		fmt.Sprintf("Load device DeviceFirmwareUUID")
+
 		firmwareInfo, err := dev.GetCharByUUID(DeviceFirmwareUUID)
 		if err != nil {
 			return SensorTagDeviceInfo{}, err
@@ -1899,9 +1893,9 @@ func newDeviceInfo(tag *SensorTag) (SensorTagDeviceInfo, error) {
 		if firmwareInfo == nil {
 			return SensorTagDeviceInfo{}, errors.New("Cannot find DeviceFirmwareUUID characteristic " + DeviceFirmwareUUID)
 		}
-		
-		dbgTag("Load device DeviceHardwareUUID")
-		
+
+		fmt.Sprintf("Load device DeviceHardwareUUID")
+
 		hardwareInfo, err := dev.GetCharByUUID(DeviceHardwareUUID)
 		if err != nil {
 			return SensorTagDeviceInfo{}, err
@@ -1909,19 +1903,19 @@ func newDeviceInfo(tag *SensorTag) (SensorTagDeviceInfo, error) {
 		if hardwareInfo == nil {
 			return SensorTagDeviceInfo{}, errors.New("Cannot find DeviceHardwareUUID characteristic " + DeviceHardwareUUID)
 		}
-		
-		dbgTag("Load device DeviceManufacturerUUID")
-		
+
+		fmt.Sprintf("Load device DeviceManufacturerUUID")
+
 		manufacturerInfo, err := dev.GetCharByUUID(DeviceManufacturerUUID)
 		if err != nil {
 			return SensorTagDeviceInfo{}, err
 		}
 		if manufacturerInfo == nil {
 			return SensorTagDeviceInfo{}, errors.New("Cannot find DeviceManufacturerUUID characteristic " + DeviceManufacturerUUID)
-		}		
-		
-		dbgTag("Load device DeviceModelUUID")
-		
+		}
+
+		fmt.Sprintf("Load device DeviceModelUUID")
+
 		modelInfo, err := dev.GetCharByUUID(DeviceModelUUID)
 		if err != nil {
 			return SensorTagDeviceInfo{}, err
@@ -1929,8 +1923,8 @@ func newDeviceInfo(tag *SensorTag) (SensorTagDeviceInfo, error) {
 		if modelInfo == nil {
 			return SensorTagDeviceInfo{}, errors.New("Cannot find DeviceModelUUID characteristic " + DeviceModelUUID)
 		}
-		
-		return SensorTagDeviceInfo{tag, modelInfo, manufacturerInfo, hardwareInfo,firmwareInfo}, err
+
+		return SensorTagDeviceInfo{tag, modelInfo, manufacturerInfo, hardwareInfo, firmwareInfo}, err
 	}
 
 	return loadChars()
@@ -1939,11 +1933,11 @@ func newDeviceInfo(tag *SensorTag) (SensorTagDeviceInfo, error) {
 //......DeviceInfo sensorTag structure....
 
 type SensorTagDeviceInfo struct {
-	tag					*SensorTag
-	firmwareInfo		*profile.GattCharacteristic1
-	hardwareInfo		*profile.GattCharacteristic1
-	manufacturerInfo	*profile.GattCharacteristic1
-	modelInfo			*profile.GattCharacteristic1
+	tag              *SensorTag
+	firmwareInfo     *profile.GattCharacteristic1
+	hardwareInfo     *profile.GattCharacteristic1
+	manufacturerInfo *profile.GattCharacteristic1
+	modelInfo        *profile.GattCharacteristic1
 }
 
 //........Read device info from sensorTag........................
@@ -1952,25 +1946,24 @@ func (s *SensorTagDeviceInfo) Read() (api.DataEvent, error) {
 
 	options1 := make(map[string]dbus.Variant)
 	fw, err := s.firmwareInfo.ReadValue(options1)
-	
+
 	options2 := make(map[string]dbus.Variant)
 	hw, err := s.hardwareInfo.ReadValue(options2)
-	
+
 	options3 := make(map[string]dbus.Variant)
 	manufacturer, err := s.manufacturerInfo.ReadValue(options3)
-	
+
 	options4 := make(map[string]dbus.Variant)
 	model, err := s.modelInfo.ReadValue(options4)
-	
+
 	//log.Debug(" system info for sensorTag: ",string(fw),string(hw),string(manufacturer),string(model),)
-	
+
 	dataEvent := api.DataEvent{
-				
-		FirmwareVersion:	string(fw),
-		HardwareVersion:	string(hw),
-		Manufacturer:		string(manufacturer),
-		Model:				string(model),
-					
-	}	
+
+		FirmwareVersion: string(fw),
+		HardwareVersion: string(hw),
+		Manufacturer:    string(manufacturer),
+		Model:           string(model),
+	}
 	return dataEvent, err
 }

@@ -1,14 +1,11 @@
 package emitter
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 	"sync"
-
-	"github.com/tj/go-debug"
 )
-
-var dbg = debug.Debug("bluez:emitter")
 
 //Callback is a function to be invoked when an event happens
 type Callback func(ev Event)
@@ -40,30 +37,30 @@ var events = make(map[string][]*Callback, 0)
 var mutex = &sync.Mutex{}
 
 func loop() {
-	dbg("loop: Started")
+	fmt.Sprintf("loop: Started")
 	for {
 
 		if pipe == nil {
-			dbg("loop: Closed")
+			fmt.Sprintf("loop: Closed")
 			return
 		}
 
-		dbg("loop: Waiting for events")
+		fmt.Sprintf("loop: Waiting for events")
 		ev := <-pipe
 		if ev == nil {
-			dbg("loop: nil event, quit")
+			fmt.Sprintf("loop: nil event, quit")
 			return
 		}
 
-		dbg("loop: Trigger event `%s`", ev.GetName())
+		fmt.Sprintf("loop: Trigger event `%s`", ev.GetName())
 
 		mutex.Lock()
 		if _, ok := events[ev.GetName()]; ok {
 			size := len(events[ev.GetName()])
 			if size == 0 {
-				dbg("loop: No callback(s)")
+				fmt.Sprintf("loop: No callback(s)")
 			} else {
-				dbg("loop: %d callback(s)", size)
+				fmt.Sprintf("loop: %d callback(s)", size)
 				for i := 0; i < size; i++ {
 					cb := *events[ev.GetName()][i]
 					go cb(ev)
@@ -71,13 +68,13 @@ func loop() {
 			}
 		}
 		mutex.Unlock()
-		dbg("loop: done event trigger")
+		fmt.Sprintf("loop: done event trigger")
 	}
 }
 
 func getPipe() {
 	if pipe == nil {
-		dbg("Init pipe")
+		fmt.Sprintf("Init pipe")
 		pipe = make(chan Event, 1)
 		go loop()
 	}
@@ -105,15 +102,15 @@ func On(event string, callback *Callback) {
 
 	events[event] = append(events[event], callback)
 	mutex.Unlock()
-	dbg("Added to `%s` event, len is %d", event, len(events[event]))
+	fmt.Sprintf("Added to `%s` event, len is %d", event, len(events[event]))
 }
 
 // Emit an event
 func Emit(name string, data interface{}) {
-	dbg("Emit event `%s` -> %v", name, data)
+	fmt.Sprintf("Emit event `%s` -> %v", name, data)
 	getPipe()
 	ev := BaseEvent{name, data}
-	dbg("Send to pipe")
+	fmt.Sprintf("Send to pipe")
 	pipe <- ev
 }
 
@@ -142,7 +139,7 @@ func RemoveListeners(pattern string, callback *Callback) {
 //Off Removes all callbacks from an event
 func Off(name string, callback *Callback) {
 
-	dbg("Off %s", name)
+	fmt.Sprintf("Off %s", name)
 
 	if name == "*" {
 		for name := range events {
@@ -162,7 +159,7 @@ func Off(name string, callback *Callback) {
 		for i, cb := range events[name] {
 			// compare pointers to see if the exactly same function
 			if cb == callback {
-				dbg("Drop callback for `%s`", name)
+				fmt.Sprintf("Drop callback for `%s`", name)
 				events[name] = append(events[name][:i], events[name][i+1:]...)
 			}
 		}

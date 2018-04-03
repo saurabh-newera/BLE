@@ -5,7 +5,6 @@ import (
 
 	"github.com/godbus/dbus"
 	"github.com/op/go-logging"
-	"github.com/tj/go-debug"
 
 	"github.com/saurabh-newera/BLE/bluez"
 	"github.com/saurabh-newera/BLE/bluez/profile"
@@ -14,12 +13,10 @@ import (
 
 var logger = logging.MustGetLogger("api")
 
-var dbg = debug.Debug("bluez:api")
-
 //Exit performs a clean exit
 func Exit() {
 	GetManager().Close()
-	dbg("Bye.")
+	fmt.Sprintf("Bye.")
 }
 
 //GetDeviceByAddress return a Device object based on its address
@@ -29,10 +26,10 @@ func GetDeviceByAddress(address string) (*Device, error) {
 		return nil, err
 	}
 	for _, path := range list {
-		// dbg("Check device %s", path)
+		// fmt.Sprintf("Check device %s", path)
 		dev := NewDevice(string(path))
 		if dev.Properties.Address == address {
-			// dbg("Address found")
+			// fmt.Sprintf("Address found")
 			return dev, nil
 		}
 	}
@@ -89,7 +86,7 @@ func AdapterExists(adapterID string) (bool, error) {
 	path := dbus.ObjectPath("/org/bluez/" + adapterID)
 	_, exists := (*objects)[path]
 
-	dbg("Adapter %s exists ? %t", adapterID, exists)
+	fmt.Sprintf("Adapter %s exists ? %t", adapterID, exists)
 	return exists, nil
 }
 

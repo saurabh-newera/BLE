@@ -8,10 +8,8 @@ import (
 	"github.com/saurabh-newera/BLE/bluez/profile"
 	"github.com/saurabh-newera/BLE/emitter"
 	"github.com/saurabh-newera/BLE/util"
-	"github.com/tj/go-debug"
 )
 
-var dbgManager = debug.Debug("bluez:api:Manager")
 var manager *Manager
 
 //GetManager return the object manager reference
@@ -37,7 +35,7 @@ func NewManager() *Manager {
 		panic(err)
 	}
 
-	dbgManager("Manager initialized")
+	fmt.Sprintf("Manager initialized")
 	return m
 }
 
@@ -65,7 +63,7 @@ func (m *Manager) watchChanges() error {
 		return nil
 	}
 
-	dbgManager("Watching manager changes")
+	fmt.Sprintf("Watching manager changes")
 
 	if m == nil {
 		return nil
@@ -81,21 +79,21 @@ func (m *Manager) watchChanges() error {
 	m.watchChangesEnabled = true
 
 	go (func() {
-		dbgManager("waiting updates")
+		fmt.Sprintf("waiting updates")
 		for v := range channel {
 
 			if v == nil {
-				dbgManager("nil value, abort")
+				fmt.Sprintf("nil value, abort")
 				m.watchChangesEnabled = false
 				return
 			}
 
-			dbgManager("update received %s from %s", v.Name, v.Sender)
+			fmt.Sprintf("update received %s from %s", v.Name, v.Sender)
 
 			switch v.Name {
 			case bluez.InterfacesAdded:
 				{
-					dbgManager("Added %s %s", v.Name, v.Path)
+					fmt.Sprintf("Added %s %s", v.Name, v.Path)
 
 					path := v.Body[0].(dbus.ObjectPath)
 					props := v.Body[1].(map[string]map[string]dbus.Variant)
@@ -103,13 +101,13 @@ func (m *Manager) watchChanges() error {
 					// keep cache up to date
 					m.objects[path] = props
 
-					dbgManager("Body %v", props)
+					fmt.Sprintf("Body %v", props)
 					emitChanges(path, props)
 				}
 			case bluez.InterfacesRemoved:
 				{
 
-					dbgManager("Removed %s %s", v.Name, v.Path)
+					fmt.Sprintf("Removed %s %s", v.Name, v.Path)
 
 					// dbg("\n+++Body %s\n", v.Body)
 					path := v.Body[0].(dbus.ObjectPath)
@@ -124,7 +122,7 @@ func (m *Manager) watchChanges() error {
 						// device removed
 						if iF == bluez.Device1Interface {
 							// dbg("%s : %s", path, ifaces)
-							dbgManager("Removed device %s", path)
+							fmt.Sprintf("Removed device %s", path)
 							devInfo := DiscoveredDeviceEvent{string(path), DeviceRemoved, nil}
 							emitter.Emit("discovery", devInfo)
 						}
@@ -135,7 +133,7 @@ func (m *Manager) watchChanges() error {
 							parts := strings.Split(strpath, "/")
 							name := parts[len(parts)-1:][0]
 
-							dbgManager("Removed adapter %s", name)
+							fmt.Sprintf("Removed adapter %s", name)
 							adapterInfo := AdapterEvent{name, strpath, DeviceRemoved}
 							emitter.Emit("adapter", adapterInfo)
 						}
@@ -156,7 +154,7 @@ func emitChanges(path dbus.ObjectPath, props map[string]map[string]dbus.Variant)
 			logger.Fatalf("Failed to parse device: %v\n", err)
 			return
 		}
-		dbgManager("Added device %s", path)
+		fmt.Sprintf("Added device %s", path)
 		devInfo := DiscoveredDeviceEvent{string(path), DeviceAdded, dev}
 		emitter.Emit("discovery", devInfo)
 	}
@@ -167,7 +165,7 @@ func emitChanges(path dbus.ObjectPath, props map[string]map[string]dbus.Variant)
 		parts := strings.Split(strpath, "/")
 		name := parts[len(parts)-1:][0]
 
-		dbgManager("Added adapter %s", name)
+		fmt.Sprintf("Added adapter %s", name)
 		adapterInfo := AdapterEvent{name, strpath, DeviceAdded}
 		emitter.Emit("adapter", adapterInfo)
 	}
@@ -179,7 +177,7 @@ func emitChanges(path dbus.ObjectPath, props map[string]map[string]dbus.Variant)
 		parts := strings.Split(strpath, "/")
 		devicePath := strings.Join(parts[:len(parts)-1], "/")
 
-		dbgManager("Added GattService1 %s", strpath)
+		fmt.Sprintf("Added GattService1 %s", strpath)
 
 		srvcProps := new(profile.GattService1Properties)
 		util.MapToStruct(srvcProps, props[bluez.GattService1Interface])
@@ -197,7 +195,7 @@ func emitChanges(path dbus.ObjectPath, props map[string]map[string]dbus.Variant)
 		parts := strings.Split(strpath, "/")
 		devicePath := strings.Join(parts[:len(parts)-2], "/")
 
-		dbgManager("Added GattCharacteristic1 %s", strpath)
+		fmt.Sprintf("Added GattCharacteristic1 %s", strpath)
 
 		srvcProps := new(profile.GattCharacteristic1Properties)
 		util.MapToStruct(srvcProps, props[bluez.GattCharacteristic1Interface])
@@ -213,7 +211,7 @@ func emitChanges(path dbus.ObjectPath, props map[string]map[string]dbus.Variant)
 		parts := strings.Split(strpath, "/")
 		devicePath := strings.Join(parts[:len(parts)-3], "/")
 
-		dbgManager("Added GattDescriptor1 %s", strpath)
+		fmt.Sprintf("Added GattDescriptor1 %s", strpath)
 
 		srvcProps := new(profile.GattDescriptor1Properties)
 		util.MapToStruct(srvcProps, props[bluez.GattDescriptor1Interface])
@@ -250,7 +248,7 @@ func (m *Manager) RefreshState() error {
 		return err
 	}
 
-	dbgManager("Refreshing object state")
+	fmt.Sprintf("Refreshing object state")
 	objs := m.GetObjects()
 	for path, ifaces := range *objs {
 		emitChanges(path, ifaces)
