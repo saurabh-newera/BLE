@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/godbus/dbus"
 	"github.com/op/go-logging"
